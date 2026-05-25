@@ -24,6 +24,22 @@ const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url, `http://${request.headers.host}`);
 
+    if (request.method === "GET" && url.pathname === "/") {
+      sendJson(response, 200, {
+        name: "Daily Track Todo API",
+        status: "running",
+        endpoints: [
+          "GET /health",
+          "GET /api/tasks",
+          "POST /api/tasks",
+          "PATCH /api/tasks/:id",
+          "DELETE /api/tasks/:id",
+          "DELETE /api/tasks/completed"
+        ]
+      });
+      return;
+    }
+
     if (request.method === "GET" && url.pathname === "/health") {
       sendJson(response, 200, { ok: true });
       return;
