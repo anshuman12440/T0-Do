@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Daily Track Todo</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <section class="workspace" aria-label="Todo app">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Personal planner</p>
+          <h1>Daily Track</h1>
+        </div>
+        <div class="date-pill" id="todayLabel"></div>
+      </header>
+
+      <section class="quick-stats" aria-label="Task progress">
+        <div class="stat">
+          <span id="statToday">0</span>
+          <p>Due today</p>
+        </div>
+        <div class="stat">
+          <span id="statFuture">0</span>
+          <p>Future</p>
+        </div>
+        <div class="stat">
+          <span id="statDone">0</span>
+          <p>Completed</p>
+        </div>
+        <div class="stat progress-stat">
+          <span id="statProgress">0%</span>
+          <p>Today done</p>
+        </div>
+      </section>
+
+      <form class="task-form" id="taskForm">
+        <label>
+          <span>Task</span>
+          <input id="taskTitle" name="title" type="text" placeholder="What needs to be completed?" autocomplete="off" required>
+        </label>
+        <label>
+          <span>Due</span>
+          <input id="taskDue" name="due" type="date" required>
+        </label>
+        <label>
+          <span>Priority</span>
+          <select id="taskPriority" name="priority">
+            <option value="normal">Normal</option>
+            <option value="high">High</option>
+            <option value="low">Low</option>
+          </select>
+        </label>
+        <button type="submit">Add task</button>
+      </form>
+
+      <div class="filters" role="tablist" aria-label="Task filters">
+        <button class="filter active" type="button" data-filter="today" role="tab" aria-selected="true">Today</button>
+        <button class="filter" type="button" data-filter="future" role="tab" aria-selected="false">Future</button>
+        <button class="filter" type="button" data-filter="all" role="tab" aria-selected="false">All</button>
+        <button class="filter" type="button" data-filter="done" role="tab" aria-selected="false">Done</button>
+      </div>
+
+      <section class="task-panel" aria-live="polite">
+        <div class="panel-heading">
+          <h2 id="listTitle">Today</h2>
+          <button class="text-button" type="button" id="clearDone">Clear completed</button>
+        </div>
+        <p class="status-message" id="statusMessage"></p>
+        <ul class="task-list" id="taskList"></ul>
+        <div class="empty-state" id="emptyState">
+          <h3>No tasks here yet</h3>
+          <p>Add something above and it will show up in the right place.</p>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
