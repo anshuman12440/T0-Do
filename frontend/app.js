@@ -12,6 +12,7 @@ const filters = document.querySelectorAll(".filter");
 const listTitle = document.querySelector("#listTitle");
 const clearDone = document.querySelector("#clearDone");
 const statusMessage = document.querySelector("#statusMessage");
+const themeToggle = document.querySelector("#themeToggle");
 
 const statToday = document.querySelector("#statToday");
 const statFuture = document.querySelector("#statFuture");
@@ -22,8 +23,10 @@ const todayLabel = document.querySelector("#todayLabel");
 // The tasks array is the app's main data. It now comes from the backend API.
 let tasks = [];
 let activeFilter = "today";
+let currentTheme = localStorage.getItem("todo-theme") || "dark";
 
 const today = toDateInputValue(new Date());
+applyTheme(currentTheme);
 taskDue.value = today;
 todayLabel.textContent = new Intl.DateTimeFormat("en-IN", {
   weekday: "long",
@@ -33,6 +36,12 @@ todayLabel.textContent = new Intl.DateTimeFormat("en-IN", {
 }).format(new Date());
 
 loadTasks();
+
+themeToggle.addEventListener("click", () => {
+  currentTheme = currentTheme === "dark" ? "light" : "dark";
+  localStorage.setItem("todo-theme", currentTheme);
+  applyTheme(currentTheme);
+});
 
 // Form submit: send a new task to the backend, then redraw the page.
 taskForm.addEventListener("submit", async (event) => {
@@ -281,6 +290,12 @@ function setStatus(message) {
 function showError(message) {
   statusMessage.textContent = `Backend error: ${message}`;
   statusMessage.classList.add("error");
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  themeToggle.textContent = theme === "dark" ? "Light" : "Dark";
+  themeToggle.setAttribute("aria-label", `Switch to ${theme === "dark" ? "light" : "dark"} theme`);
 }
 
 // Text shown above the task list.
