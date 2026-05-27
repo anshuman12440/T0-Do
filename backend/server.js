@@ -1,16 +1,56 @@
+import "dotenv/config";
 import { createServer } from "node:http";
-import { randomUUID } from "node:crypto";
-import { readFile, rename, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import mongoose from "mongoose";
 
 const PORT = Number(process.env.PORT || 4000);
-const DATA_FILE = process.env.DATA_FILE || path.join(__dirname, "tasks.json");
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  console.error("Missing MONGODB_URI environment variable");
+  process.exit(1);
+}
+
+const taskSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    due: {
+      type: String,
+      required: true,
+      trim: true,
+      validate: {
+        validator: isValidDateInput,
+        message: "Due date must be YYYY-MM-DD"
+      }
+    },
+    priority: {
+      type: String,
+      enum: ["high", "normal", "low"],
+      default: "normal",
+      trim: true
+    },
+    done: {
+      type: Boolean,
+      default: false
+    },
+    completedAt: {
+      type: Date,
+      default: null
+    }
+  },
+  {
+    timestamps: { createdAt: true, updatedAt: false },
+    versionKey: false
+  }
+);
+
+const Task = mongoose.model("Task", taskSchema);
+
+await mongoose.connect(MONGODB_URI);
 
 const server = createServer(async (request, response) => {
   setCorsHeaders(response);
@@ -28,6 +68,7 @@ const server = createServer(async (request, response) => {
       sendJson(response, 200, {
         name: "Daily Track Todo API",
         status: "running",
+        storage: "mongodb",
         endpoints: [
           "GET /health",
           "GET /api/tasks",
@@ -41,29 +82,27 @@ const server = createServer(async (request, response) => {
     }
 
     if (request.method === "GET" && url.pathname === "/health") {
-      sendJson(response, 200, { ok: true });
+      sendJson(response, 200, {
+        ok: true,
+        database: mongoose.connection.readyState === 1 ? "connected" : "disconnected"
+      });
       return;
     }
 
     if (request.method === "GET" && url.pathname === "/api/tasks") {
-      const tasks = await readTasks();
-      sendJson(response, 200, tasks);
+      const tasks = await Task.find().sort({ createdAt: -1 }).lean();
+      sendJson(response, 200, tasks.map(toClientTask));
       return;
     }
 
     if (request.method === "POST" && url.pathname === "/api/tasks") {
-      const body = await readJsonBody(request);
-      const task = createTask(body);
-      const tasks = await readTasks();
-      tasks.unshift(task);
-      await writeTasks(tasks);
-      sendJson(response, 201, task);
+      const task = await Task.create(createTask(await readJsonBody(request)));
+      sendJson(response, 201, toClientTask(task));
       return;
     }
 
     if (request.method === "DELETE" && url.pathname === "/api/tasks/completed") {
-      const tasks = await readTasks();
-      await writeTasks(tasks.filter((task) => !task.done));
+      await Task.deleteMany({ done: true });
       sendJson(response, 200, { ok: true });
       return;
     }
@@ -72,7 +111,7 @@ const server = createServer(async (request, response) => {
 
     if (taskIdMatch && request.method === "PATCH") {
       const updatedTask = await updateTask(taskIdMatch[1], await readJsonBody(request));
-      sendJson(response, 200, updatedTask);
+      sendJson(response, 200, toClientTask(updatedTask));
       return;
     }
 
@@ -84,8 +123,8 @@ const server = createServer(async (request, response) => {
 
     sendJson(response, 404, { message: "Route not found" });
   } catch (error) {
-    const status = error.status || 500;
-    sendJson(response, status, { message: error.message || "Server error" });
+    const status = error.status || (error.name === "ValidationError" ? 400 : 500);
+    sendJson(response, status, { message: getErrorMessage(error) });
   }
 });
 
@@ -118,21 +157,6 @@ async function readJsonBody(request) {
   }
 }
 
-async function readTasks() {
-  if (!existsSync(DATA_FILE)) {
-    return [];
-  }
-
-  const file = await readFile(DATA_FILE, "utf8");
-  return JSON.parse(file || "[]");
-}
-
-async function writeTasks(tasks) {
-  const tempFile = `${DATA_FILE}.tmp`;
-  await writeFile(tempFile, JSON.stringify(tasks, null, 2));
-  await rename(tempFile, DATA_FILE);
-}
-
 function createTask(body) {
   const title = String(body.title || "").trim();
   const due = String(body.due || "").trim();
@@ -141,60 +165,82 @@ function createTask(body) {
   validateTaskInput(title, due, priority);
 
   return {
-    id: randomUUID(),
     title,
     due,
     priority,
     done: false,
-    createdAt: new Date().toISOString(),
     completedAt: null
   };
 }
 
 async function updateTask(id, body) {
-  const tasks = await readTasks();
-  const task = tasks.find((item) => item.id === id);
-
-  if (!task) {
+  if (!mongoose.isValidObjectId(id)) {
     throw httpError(404, "Task not found");
   }
+
+  const updates = {};
 
   if (typeof body.title !== "undefined") {
     const title = String(body.title).trim();
     if (!title) throw httpError(400, "Title is required");
-    task.title = title;
+    updates.title = title;
   }
 
   if (typeof body.due !== "undefined") {
     const due = String(body.due).trim();
     if (!isValidDateInput(due)) throw httpError(400, "Due date must be YYYY-MM-DD");
-    task.due = due;
+    updates.due = due;
   }
 
   if (typeof body.priority !== "undefined") {
     const priority = String(body.priority).trim();
     if (!["high", "normal", "low"].includes(priority)) throw httpError(400, "Invalid priority");
-    task.priority = priority;
+    updates.priority = priority;
   }
 
   if (typeof body.done !== "undefined") {
-    task.done = Boolean(body.done);
-    task.completedAt = task.done ? new Date().toISOString() : null;
+    updates.done = Boolean(body.done);
+    updates.completedAt = updates.done ? new Date() : null;
   }
 
-  await writeTasks(tasks);
+  const task = await Task.findByIdAndUpdate(id, updates, {
+    new: true,
+    runValidators: true
+  });
+
+  if (!task) {
+    throw httpError(404, "Task not found");
+  }
+
   return task;
 }
 
 async function deleteTask(id) {
-  const tasks = await readTasks();
-  const nextTasks = tasks.filter((task) => task.id !== id);
-
-  if (nextTasks.length === tasks.length) {
+  if (!mongoose.isValidObjectId(id)) {
     throw httpError(404, "Task not found");
   }
 
-  await writeTasks(nextTasks);
+  const task = await Task.findByIdAndDelete(id);
+
+  if (!task) {
+    throw httpError(404, "Task not found");
+  }
+}
+
+function toClientTask(task) {
+  return {
+    id: String(task._id),
+    title: task.title,
+    due: task.due,
+    priority: task.priority,
+    done: task.done,
+    createdAt: toISOString(task.createdAt),
+    completedAt: toISOString(task.completedAt)
+  };
+}
+
+function toISOString(value) {
+  return value ? new Date(value).toISOString() : null;
 }
 
 function validateTaskInput(title, due, priority) {
@@ -205,6 +251,14 @@ function validateTaskInput(title, due, priority) {
 
 function isValidDateInput(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+function getErrorMessage(error) {
+  if (error.name === "ValidationError") {
+    return Object.values(error.errors).map((item) => item.message).join(", ");
+  }
+
+  return error.message || "Server error";
 }
 
 function httpError(status, message) {
