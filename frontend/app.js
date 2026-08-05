@@ -8,7 +8,7 @@ const previousMonth = document.querySelector("#previousMonth");
 const nextMonth = document.querySelector("#nextMonth");
 const todayButton = document.querySelector("#todayButton");
 const calendarTitle = document.querySelector("#calendarTitle");
-const todayLabel = document.querySelector("#todayLabel");
+const selectedDatePill = document.querySelector("#selectedDatePill");
 
 const taskForm = document.querySelector("#taskForm");
 const taskTitle = document.querySelector("#taskTitle");
@@ -35,8 +35,8 @@ const daySummaryChart = document.querySelector("#daySummaryChart");
 const weekSummaryChart = document.querySelector("#weekSummaryChart");
 const monthSummaryChart = document.querySelector("#monthSummaryChart");
 
-const today = toDateInputValue(new Date());
-const todayDate = new Date(`${today}T00:00:00`);
+let today = getTodayValue();
+let todayDate = new Date(`${today}T00:00:00`);
 const monthNames = Array.from({ length: 12 }, (_, month) =>
   new Intl.DateTimeFormat("en-IN", { month: "long" }).format(new Date(2026, month, 1))
 );
@@ -62,13 +62,6 @@ applySummaryVisibility();
 applyOverdueVisibility();
 yearInput.value = visibleYear;
 monthSelect.value = String(visibleMonth);
-todayLabel.textContent = new Intl.DateTimeFormat("en-IN", {
-  weekday: "long",
-  day: "numeric",
-  month: "short",
-  year: "numeric"
-}).format(todayDate);
-
 loadTasks();
 
 themeToggle.addEventListener("click", () => {
@@ -97,13 +90,14 @@ nextMonth.addEventListener("click", () => {
 });
 
 todayButton.addEventListener("click", () => {
-  isOverdueMode = false;
-  selectedDate = today;
-  visibleMonth = todayDate.getMonth();
-  visibleYear = todayDate.getFullYear();
-  applyOverdueVisibility();
-  render();
+  goToToday();
 });
+
+window.addEventListener("focus", syncTodayOnResume);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) syncTodayOnResume();
+});
+setInterval(syncTodayOnResume, 60000);
 
 monthSelect.addEventListener("change", () => {
   setVisibleMonth(visibleYear, Number(monthSelect.value));
@@ -346,7 +340,9 @@ function render() {
   calendarTitle.textContent = `${monthNames[visibleMonth]} ${visibleYear}`;
   monthSelect.value = String(visibleMonth);
   yearInput.value = visibleYear;
-  selectedDateTitle.textContent = isOverdueMode ? "Overdue tasks" : formatDisplayDate(selectedDate);
+  const activeDateLabel = isOverdueMode ? "Overdue tasks" : formatDisplayDate(selectedDate);
+  selectedDatePill.textContent = activeDateLabel;
+  selectedDateTitle.textContent = activeDateLabel;
 
   renderCalendar();
   renderSelectedDateTasks();
@@ -832,7 +828,7 @@ function applyOverdueVisibility() {
 function applySummaryVisibility() {
   analyticsStrip.hidden = !isSummaryOpen;
   summaryToggle.classList.toggle("active", isSummaryOpen);
-  summaryToggle.textContent = isSummaryOpen ? "Hide summary" : "Summary";
+  summaryToggle.textContent = "Summary";
   summaryToggle.setAttribute("aria-expanded", String(isSummaryOpen));
 }
 
@@ -864,6 +860,39 @@ function priorityRank(priority) {
 
 function padNumber(value) {
   return String(value).padStart(2, "0");
+}
+
+function goToToday() {
+  refreshToday();
+  isOverdueMode = false;
+  selectedDate = today;
+  visibleMonth = todayDate.getMonth();
+  visibleYear = todayDate.getFullYear();
+  applyOverdueVisibility();
+  render();
+}
+
+function syncTodayOnResume() {
+  const previousToday = today;
+  refreshToday();
+  if (previousToday === today) return;
+
+  selectedDate = today;
+  visibleMonth = todayDate.getMonth();
+  visibleYear = todayDate.getFullYear();
+  render();
+}
+
+function refreshToday() {
+  const nextToday = getTodayValue();
+  if (nextToday === today) return;
+
+  today = nextToday;
+  todayDate = new Date(`${today}T00:00:00`);
+}
+
+function getTodayValue() {
+  return toDateInputValue(new Date());
 }
 
 function toDateInputValue(date) {

@@ -113,7 +113,6 @@ h1 {
   gap: 10px;
 }
 
-.today-pill,
 .summary-toggle,
 .overdue-toggle,
 .theme-toggle {
@@ -124,15 +123,6 @@ h1 {
   background: var(--surface-soft);
 }
 
-.today-pill {
-  display: inline-flex;
-  align-items: center;
-  margin: 0;
-  padding: 0 14px;
-  color: var(--muted);
-  font-weight: 800;
-  white-space: nowrap;
-}
 
 
 .summary-toggle,
@@ -852,13 +842,8 @@ button:focus-visible {
   }
 
   .header-actions,
-  .today-pill,
   .theme-toggle {
     width: 100%;
-  }
-
-  .today-pill {
-    justify-content: center;
   }
 
   .quick-stats,
