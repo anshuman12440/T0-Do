@@ -1,12 +1,13 @@
 import "dotenv/config";
 import { createServer } from "node:http";
 import { randomUUID } from "node:crypto";
-import { readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import mongoose from "mongoose";
 
 const PORT = Number(process.env.PORT || 4000);
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
 const MONGODB_URI = process.env.MONGODB_URI;
+const DATABASE_DIR = new URL("./database/", import.meta.url);
 const FILE_STORE_PATH = new URL("./database/tasks.json", import.meta.url);
 const TEMP_FILE_STORE_PATH = new URL("./database/tasks.json.tmp", import.meta.url);
 
@@ -365,6 +366,8 @@ async function deleteCompletedTasks() {
 }
 
 async function ensureFileStore() {
+  await mkdir(DATABASE_DIR, { recursive: true });
+
   try {
     await readFile(FILE_STORE_PATH, "utf8");
   } catch (error) {
