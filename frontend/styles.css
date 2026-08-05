@@ -114,7 +114,6 @@ h1 {
 }
 
 .today-pill,
-.db-pill,
 .summary-toggle,
 .overdue-toggle,
 .theme-toggle {
@@ -125,8 +124,7 @@ h1 {
   background: var(--surface-soft);
 }
 
-.today-pill,
-.db-pill {
+.today-pill {
   display: inline-flex;
   align-items: center;
   margin: 0;
@@ -136,21 +134,6 @@ h1 {
   white-space: nowrap;
 }
 
-.db-pill {
-  color: var(--muted);
-}
-
-.db-pill.connected {
-  color: var(--done);
-}
-
-.db-pill.local {
-  color: var(--todo);
-}
-
-.db-pill.offline {
-  color: var(--danger);
-}
 
 .summary-toggle,
 .overdue-toggle,

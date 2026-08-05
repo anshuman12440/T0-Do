@@ -9,7 +9,6 @@ const nextMonth = document.querySelector("#nextMonth");
 const todayButton = document.querySelector("#todayButton");
 const calendarTitle = document.querySelector("#calendarTitle");
 const todayLabel = document.querySelector("#todayLabel");
-const dbStatus = document.querySelector("#dbStatus");
 
 const taskForm = document.querySelector("#taskForm");
 const taskTitle = document.querySelector("#taskTitle");
@@ -70,7 +69,6 @@ todayLabel.textContent = new Intl.DateTimeFormat("en-IN", {
   year: "numeric"
 }).format(todayDate);
 
-loadHealth();
 loadTasks();
 
 themeToggle.addEventListener("click", () => {
@@ -210,18 +208,6 @@ clearDone.addEventListener("click", async () => {
     showError(error.message);
   }
 });
-
-async function loadHealth() {
-  try {
-    const health = await apiRequest("/health");
-    const isMongo = health.storage === "mongodb";
-    dbStatus.textContent = isMongo ? "MongoDB connected" : "Local file storage";
-    dbStatus.className = `db-pill ${isMongo ? "connected" : "local"}`;
-  } catch {
-    dbStatus.textContent = "Storage offline";
-    dbStatus.className = "db-pill offline";
-  }
-}
 
 async function loadTasks() {
   try {
