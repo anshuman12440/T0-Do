@@ -1,6 +1,6 @@
 # Daily Track Todo
 
-Plain JavaScript todo app with a separate frontend and backend.
+Plain JavaScript calendar todo app with a separate frontend and backend.
 
 ## Project structure
 
@@ -18,12 +18,14 @@ backend/
 
 ## Run backend
 
+Create `backend/.env` from `backend/.env.example`, then set your MongoDB connection string:
+
 ```bash
 cd backend
 npm start
 ```
 
-The API runs at `http://localhost:4000` and stores tasks in `backend/tasks.json`.
+The API runs at `http://localhost:4000` by default. It uses MongoDB when `MONGODB_URI` is available, and falls back to `backend/database/tasks.json` for local development.
 
 ## Run frontend
 
@@ -37,8 +39,11 @@ window.TODO_API_URL = "https://your-backend-url.com";
 
 ## API
 
+- `GET /health`
 - `GET /api/tasks`
 - `POST /api/tasks`
 - `PATCH /api/tasks/:id`
 - `DELETE /api/tasks/:id`
 - `DELETE /api/tasks/completed`
+
+Tasks support `title`, `due`, `priority`, and `status`. Status can be `todo`, `in-progress`, or `done`.
